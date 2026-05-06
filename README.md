@@ -30,7 +30,7 @@ The add-on is intended for Home Assistant OS or Home Assistant Supervised instal
 | 53 | TCP | DNS queries that require TCP, such as large responses and zone-related traffic |
 | 5380 | TCP | Technitium DNS Server web UI |
 
-The Technitium web UI is available at:
+Click **Open Web UI** on the add-on page to open Technitium inside Home Assistant via Ingress. The direct LAN URL can also be used as a fallback:
 
 ```text
 http://HOME_ASSISTANT_IP:5380
@@ -79,4 +79,4 @@ For critical networks, consider a secondary DNS resolver or a fallback plan befo
 
 ## Roadmap / future extensions
 
-This first version intentionally exposes only classic DNS on port 53 and the HTTP web UI on port 5380. DNS-over-HTTPS (DoH), DNS-over-TLS (DoT), HTTPS for the web UI, and certificate management are possible future extensions, but they are not enabled or enforced by default in this minimal release.
+This version intentionally exposes only classic DNS on port 53 and the HTTP web UI on port 5380. The Home Assistant **Open Web UI** button uses Ingress so the Technitium UI opens inside Home Assistant instead of redirecting the browser to `http://HOME_ASSISTANT_IP:5380`. DNS-over-HTTPS (DoH), DNS-over-TLS (DoT), HTTPS for the web UI, and certificate management are possible future extensions, but they are not enabled or enforced by default in this minimal release.

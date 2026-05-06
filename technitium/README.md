@@ -6,7 +6,7 @@ The initial version is intentionally minimal and stable:
 
 - DNS on port **53/UDP**
 - DNS on port **53/TCP**
-- Technitium web UI on port **5380/TCP**
+- Technitium web UI on port **5380/TCP** and via Home Assistant Ingress
 - Persistent Technitium data in the add-on configuration directory
 - No enforced DNS-over-HTTPS, DNS-over-TLS, or HTTPS setup
 
@@ -26,7 +26,13 @@ The initial version is intentionally minimal and stable:
 
 ## Web UI
 
-Open the Technitium web UI in a browser:
+Prefer the Home Assistant add-on page button:
+
+1. Open **Settings → Add-ons → Technitium DNS Server**.
+2. Click **Open Web UI**.
+3. Technitium should open inside Home Assistant via Ingress, similar to add-ons such as AdGuard Home.
+
+The direct LAN URL remains available as a fallback:
 
 ```text
 http://HOME_ASSISTANT_IP:5380
@@ -82,7 +88,7 @@ Use Home Assistant backups before major changes. A full backup should include th
 
 ## Updates
 
-This minimal add-on downloads the current Technitium DNS Server portable release during the add-on image build. To update Technitium, update/rebuild the add-on image through Home Assistant after a new add-on release is published.
+This minimal add-on builds on the official `technitium/dns-server:latest` container image so the Technitium application and required .NET runtime stay aligned. To update Technitium, update/rebuild the add-on image through Home Assistant after a new add-on release is published.
 
 Before updating:
 
@@ -93,6 +99,7 @@ Before updating:
 ## Known limitations
 
 - This add-on uses `host_network: true` so DNS clients can reach port 53 directly on the Home Assistant host IP. If another service already uses port 53, the add-on will not start correctly.
+- The **Open Web UI** button uses Home Assistant Ingress on internal port 5380. If direct access to `http://HOME_ASSISTANT_IP:5380` fails, use the Ingress button first and then check the add-on logs.
 - Home Assistant OS becomes part of the DNS path. If Home Assistant OS is offline, clients that rely only on this DNS server may lose DNS resolution.
 - Only `amd64`, `aarch64`, and `armv7` are declared. The Docker base image and .NET runtime must be available for the target architecture during build.
 - DoH, DoT, DoQ, HTTPS for the web UI, DHCP service, and certificate automation are not configured by this add-on.
