@@ -30,7 +30,7 @@ The add-on is intended for Home Assistant OS or Home Assistant Supervised instal
 | 53 | TCP | DNS queries that require TCP, such as large responses and zone-related traffic |
 | 5380 | TCP | Technitium DNS Server web UI |
 
-Click **Open Web UI** on the add-on page to open Technitium inside Home Assistant via Ingress. The direct LAN URL can also be used as a fallback:
+Click **Open Web UI** on the add-on page to open Technitium inside Home Assistant via Ingress. Like the AdGuard Home add-on, this add-on uses an internal NGINX ingress proxy instead of sending Home Assistant directly to the application port. The direct LAN URL can also be used as a fallback:
 
 ```text
 http://HOME_ASSISTANT_IP:5380
@@ -51,7 +51,7 @@ This add-on uses `host_network: true` for the first minimal version. That is the
 
 ## Add-on logging
 
-The add-on includes a `log_level` option. Keep it at `info` for normal use. Temporarily switch it to `debug` or `trace` when diagnosing startup, Web UI, or port-binding issues. Debug logs include .NET runtime checks and listening socket information.
+The add-on includes a `log_level` option. Keep it at `info` for normal use. Temporarily switch it to `debug` or `trace` when diagnosing startup, Web UI, Ingress, or port-binding issues. Debug logs include .NET runtime checks, NGINX ingress proxy configuration, and listening socket information.
 
 ## Persistent data
 
@@ -83,4 +83,4 @@ For critical networks, consider a secondary DNS resolver or a fallback plan befo
 
 ## Roadmap / future extensions
 
-This version intentionally exposes only classic DNS on port 53 and the HTTP web UI on port 5380. The Home Assistant **Open Web UI** button uses Ingress so the Technitium UI opens inside Home Assistant instead of redirecting the browser to `http://HOME_ASSISTANT_IP:5380`. DNS-over-HTTPS (DoH), DNS-over-TLS (DoT), HTTPS for the web UI, and certificate management are possible future extensions, but they are not enabled or enforced by default in this minimal release.
+This version intentionally exposes only classic DNS on port 53 and the HTTP web UI on port 5380. The Home Assistant **Open Web UI** button uses an internal NGINX ingress proxy on add-on port 8099 so the Technitium UI opens inside Home Assistant instead of redirecting the browser to `http://HOME_ASSISTANT_IP:5380`. DNS-over-HTTPS (DoH), DNS-over-TLS (DoT), HTTPS for the web UI, and certificate management are possible future extensions, but they are not enabled or enforced by default in this minimal release.

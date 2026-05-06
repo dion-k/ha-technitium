@@ -1,6 +1,6 @@
 FROM docker.io/technitium/dns-server:latest
 
-ARG BUILD_VERSION=1.0.4
+ARG BUILD_VERSION=1.0.5
 ARG BUILD_ARCH=amd64
 
 LABEL \
@@ -14,6 +14,7 @@ LABEL \
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     iproute2 \
+    nginx \
     procps \
   && /usr/bin/dotnet --list-runtimes | grep -E "^Microsoft\\.NETCore\\.App 10\\." \
   && /usr/bin/dotnet --list-runtimes | grep -E "^Microsoft\\.AspNetCore\\.App 10\\." \
@@ -23,5 +24,5 @@ RUN apt-get update \
 COPY run.sh /run.sh
 RUN chmod 0755 /run.sh
 
-EXPOSE 53/tcp 53/udp 5380/tcp
+EXPOSE 53/tcp 53/udp 5380/tcp 8099/tcp
 ENTRYPOINT ["/run.sh"]

@@ -6,6 +6,9 @@ TECHNITIUM_APP="/opt/technitium/dns/DnsServerApp.dll"
 TECHNITIUM_RUNTIME_CONFIG="/opt/technitium/dns/DnsServerApp.runtimeconfig.json"
 OPTIONS_FILE="/data/options.json"
 REQUIRED_DOTNET_MAJOR="10"
+TECHNITIUM_WEB_PORT="5380"
+INGRESS_PROXY_PORT="8099"
+NGINX_CONFIG="/tmp/technitium-ingress-nginx.conf"
 
 read_option() {
   local key="$1"
@@ -64,6 +67,14 @@ require_file() {
   fi
 }
 
+require_command() {
+  local command_name="$1"
+  if ! command -v "${command_name}" >/dev/null 2>&1; then
+    log error "Required command is missing: ${command_name}"
+    exit 1
+  fi
+}
+
 require_dotnet_runtime() {
   log info "Checking installed .NET runtimes"
   /usr/bin/dotnet --list-runtimes 2>&1 | sed 's/^/[dotnet] /'
@@ -105,9 +116,15 @@ wait_for_port() {
       return 0
     fi
 
-    if ! kill -0 "${TECHNITIUM_PID}" 2>/dev/null; then
+    if [ -n "${TECHNITIUM_PID:-}" ] && ! kill -0 "${TECHNITIUM_PID}" 2>/dev/null; then
       log error "Technitium process exited before ${name} started listening"
       wait "${TECHNITIUM_PID}"
+      exit $?
+    fi
+
+    if [ -n "${NGINX_PID:-}" ] && ! kill -0 "${NGINX_PID}" 2>/dev/null; then
+      log error "NGINX ingress proxy exited before ${name} started listening"
+      wait "${NGINX_PID}"
       exit $?
     fi
 
@@ -120,11 +137,74 @@ wait_for_port() {
   log_listeners
 }
 
+write_nginx_config() {
+  cat >"${NGINX_CONFIG}" <<NGINX
+worker_processes 1;
+daemon off;
+pid /tmp/nginx.pid;
+error_log /dev/stderr info;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    access_log /dev/stdout;
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    sendfile on;
+
+    map \$http_upgrade \$connection_upgrade {
+        default upgrade;
+        '' close;
+    }
+
+    upstream technitium_backend {
+        server 127.0.0.1:${TECHNITIUM_WEB_PORT};
+    }
+
+    server {
+        listen 0.0.0.0:${INGRESS_PROXY_PORT} default_server;
+
+        location / {
+            proxy_http_version 1.1;
+            proxy_pass http://technitium_backend;
+            proxy_set_header Host \$http_host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Host \$http_host;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+            proxy_set_header X-Forwarded-Prefix \$http_x_ingress_path;
+            proxy_set_header Upgrade \$http_upgrade;
+            proxy_set_header Connection \$connection_upgrade;
+            proxy_read_timeout 3600s;
+            proxy_redirect off;
+        }
+    }
+}
+NGINX
+}
+
+start_nginx() {
+  require_command nginx
+  write_nginx_config
+  run_debug_command "Generated NGINX ingress proxy configuration" cat "${NGINX_CONFIG}"
+
+  log info "Starting NGINX ingress proxy on TCP port ${INGRESS_PROXY_PORT}; forwarding to Technitium on 127.0.0.1:${TECHNITIUM_WEB_PORT}"
+  nginx -c "${NGINX_CONFIG}" &
+  NGINX_PID=$!
+  log info "NGINX ingress proxy started with PID ${NGINX_PID}"
+}
+
 shutdown() {
-  log info "Stopping Technitium DNS Server"
+  log info "Stopping Technitium DNS Server add-on"
+  if [ -n "${NGINX_PID:-}" ] && kill -0 "${NGINX_PID}" 2>/dev/null; then
+    kill -TERM "${NGINX_PID}"
+    wait "${NGINX_PID}" || true
+  fi
   if [ -n "${TECHNITIUM_PID:-}" ] && kill -0 "${TECHNITIUM_PID}" 2>/dev/null; then
     kill -TERM "${TECHNITIUM_PID}"
-    wait "${TECHNITIUM_PID}"
+    wait "${TECHNITIUM_PID}" || true
   fi
 }
 
@@ -136,6 +216,8 @@ log info "Starting Technitium DNS Server add-on"
 log info "Configured wrapper log level: ${LOG_LEVEL}"
 log info "Persistent data directory: ${TECHNITIUM_CONFIG_DIR}"
 log info "Technitium application: ${TECHNITIUM_APP}"
+log info "Technitium native web UI port: ${TECHNITIUM_WEB_PORT}"
+log info "Home Assistant ingress proxy port: ${INGRESS_PROXY_PORT}"
 log info "Container architecture: $(uname -m)"
 
 require_file "${TECHNITIUM_APP}"
@@ -152,13 +234,30 @@ log info "Launching Technitium DNS Server"
 TECHNITIUM_PID=$!
 log info "Technitium process started with PID ${TECHNITIUM_PID}"
 
-wait_for_port 5380 "Technitium web UI" 60
+wait_for_port "${TECHNITIUM_WEB_PORT}" "Technitium native web UI" 60
+start_nginx
+wait_for_port "${INGRESS_PROXY_PORT}" "Home Assistant ingress proxy" 30
 wait_for_port 53 "Technitium DNS TCP service" 30
 
 if [ "${LOG_LEVEL_NUMBER}" -le 1 ]; then
-  log debug "Listening sockets after Technitium start"
+  log debug "Listening sockets after startup"
   log_listeners
 fi
 
-log info "Technitium DNS Server is running; streaming application logs"
-wait "${TECHNITIUM_PID}"
+log info "Technitium DNS Server is running; Web UI is available through Home Assistant Ingress on add-on port ${INGRESS_PROXY_PORT}"
+
+while true; do
+  if ! kill -0 "${TECHNITIUM_PID}" 2>/dev/null; then
+    log error "Technitium process stopped unexpectedly"
+    wait "${TECHNITIUM_PID}"
+    exit $?
+  fi
+
+  if ! kill -0 "${NGINX_PID}" 2>/dev/null; then
+    log error "NGINX ingress proxy stopped unexpectedly"
+    wait "${NGINX_PID}"
+    exit $?
+  fi
+
+  sleep 5
+done
