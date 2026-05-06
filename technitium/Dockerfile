@@ -1,6 +1,6 @@
 FROM docker.io/technitium/dns-server:latest
 
-ARG BUILD_VERSION=1.0.5
+ARG BUILD_VERSION=1.0.6
 ARG BUILD_ARCH=amd64
 
 LABEL \

@@ -166,19 +166,31 @@ http {
     server {
         listen 0.0.0.0:${INGRESS_PROXY_PORT} default_server;
 
+        allow 172.30.32.2;
+        deny all;
+
         location / {
             proxy_http_version 1.1;
             proxy_pass http://technitium_backend;
+            proxy_set_header Accept-Encoding "";
             proxy_set_header Host \$http_host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Host \$http_host;
             proxy_set_header X-Forwarded-Proto \$scheme;
             proxy_set_header X-Forwarded-Prefix \$http_x_ingress_path;
+            proxy_set_header X-Ingress-Path \$http_x_ingress_path;
             proxy_set_header Upgrade \$http_upgrade;
             proxy_set_header Connection \$connection_upgrade;
-            proxy_read_timeout 3600s;
-            proxy_redirect off;
+            proxy_read_timeout 86400s;
+            proxy_send_timeout 86400s;
+            proxy_redirect / \$http_x_ingress_path/;
+            proxy_cookie_path / \$http_x_ingress_path/;
+
+            sub_filter_once off;
+            sub_filter_types text/html application/javascript text/javascript;
+            sub_filter '<head>' '<head><base href="\$http_x_ingress_path/">';
+            sub_filter 'window.location = "/";' 'window.location = window.location.pathname;';
         }
     }
 }

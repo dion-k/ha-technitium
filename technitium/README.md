@@ -30,7 +30,7 @@ The initial version is intentionally minimal and stable:
 | --- | --- | --- |
 | `log_level` | `info` | Controls the add-on wrapper logs. Use `debug` or `trace` while troubleshooting startup, port binding, NGINX Ingress, or Web UI issues. |
 
-The log level affects the Home Assistant add-on startup wrapper. Technitium application logs are still streamed to the add-on log output.
+The log level affects the Home Assistant add-on startup wrapper. Technitium application logs and NGINX access/error logs are still streamed to the add-on log output.
 
 ## Web UI
 
@@ -38,7 +38,7 @@ Prefer the Home Assistant add-on page button:
 
 1. Open **Settings → Add-ons → Technitium DNS Server**.
 2. Click **Open Web UI**.
-3. Technitium should open inside Home Assistant via Ingress, using an internal NGINX reverse proxy pattern similar to AdGuard Home.
+3. Technitium should open inside Home Assistant via Ingress, using an internal NGINX reverse proxy pattern similar to AdGuard Home. The proxy keeps Technitium assets, API calls, redirects, and cookies under the Home Assistant Ingress path.
 
 The direct LAN URL remains available as a fallback:
 
@@ -68,7 +68,7 @@ If the test fails, first check whether the add-on is running and whether another
 
 ## Logs
 
-Logs are written to stdout and stderr, so they appear in the Home Assistant add-on log view. On startup, the wrapper logs the configured log level, persistent data directory, application path, container architecture, installed .NET runtimes, whether the native Technitium Web UI starts listening on port 5380, whether the NGINX Ingress proxy starts listening on port 8099, and whether DNS listens on port 53. Set `log_level` to `debug` or `trace` to include directory listings, generated NGINX configuration, and socket details before and after startup.
+Logs are written to stdout and stderr, so they appear in the Home Assistant add-on log view. On startup, the wrapper logs the configured log level, persistent data directory, application path, container architecture, installed .NET runtimes, whether the native Technitium Web UI starts listening on port 5380, whether the NGINX Ingress proxy starts listening on port 8099, and whether DNS listens on port 53. Set `log_level` to `debug` or `trace` to include directory listings, generated NGINX configuration, Ingress path rewrite details, NGINX access logs, and socket details before and after startup.
 
 To inspect logs:
 
@@ -107,7 +107,7 @@ Before updating:
 ## Known limitations
 
 - This add-on uses `host_network: true` so DNS clients can reach port 53 directly on the Home Assistant host IP. If another service already uses port 53, the add-on will not start correctly.
-- The **Open Web UI** button uses Home Assistant Ingress on internal proxy port 8099. NGINX forwards those requests to Technitium on `127.0.0.1:5380`. If direct access to `http://HOME_ASSISTANT_IP:5380` fails, use the Ingress button first and then check the add-on logs with `log_level` set to `debug`.
+- The **Open Web UI** button uses Home Assistant Ingress on internal proxy port 8099. NGINX forwards those requests to Technitium on `127.0.0.1:5380`, injects the Ingress base path into the HTML, and rewrites redirects/cookies back to the Home Assistant Ingress path. If direct access to `http://HOME_ASSISTANT_IP:5380` fails, use the Ingress button first and then check the add-on logs with `log_level` set to `debug`.
 - Home Assistant OS becomes part of the DNS path. If Home Assistant OS is offline, clients that rely only on this DNS server may lose DNS resolution.
 - Only `amd64`, `aarch64`, and `armv7` are declared. The Docker base image and .NET runtime must be available for the target architecture during build.
 - DoH, DoT, DoQ, HTTPS for the web UI, DHCP service, and certificate automation are not configured by this add-on.
