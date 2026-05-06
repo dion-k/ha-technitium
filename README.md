@@ -49,6 +49,10 @@ Before starting this add-on, check whether another add-on or host service alread
 
 This add-on uses `host_network: true` for the first minimal version. That is the most predictable approach for a DNS server on Home Assistant OS because clients can query the Home Assistant host IP directly on port 53. The trade-off is that port conflicts are immediate and must be resolved before the add-on can start successfully.
 
+## Add-on logging
+
+The add-on includes a `log_level` option. Keep it at `info` for normal use. Temporarily switch it to `debug` or `trace` when diagnosing startup, Web UI, or port-binding issues. Debug logs include .NET runtime checks and listening socket information.
+
 ## Persistent data
 
 Technitium data is stored below:

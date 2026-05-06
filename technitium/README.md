@@ -24,6 +24,14 @@ The initial version is intentionally minimal and stable:
 3. Check the **Log** tab for startup messages.
 4. Enable **Start on boot** if it is not already enabled.
 
+## Configuration
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `log_level` | `info` | Controls the add-on wrapper logs. Use `debug` or `trace` while troubleshooting startup, port binding, or Web UI issues. |
+
+The log level affects the Home Assistant add-on startup wrapper. Technitium application logs are still streamed to the add-on log output.
+
 ## Web UI
 
 Prefer the Home Assistant add-on page button:
@@ -60,7 +68,7 @@ If the test fails, first check whether the add-on is running and whether another
 
 ## Logs
 
-Logs are written to stdout and stderr, so they appear in the Home Assistant add-on log view.
+Logs are written to stdout and stderr, so they appear in the Home Assistant add-on log view. On startup, the wrapper logs the configured log level, persistent data directory, application path, container architecture, installed .NET runtimes, and whether the Web UI starts listening on port 5380. Set `log_level` to `debug` or `trace` to include directory listings and socket details before and after startup.
 
 To inspect logs:
 
@@ -88,7 +96,7 @@ Use Home Assistant backups before major changes. A full backup should include th
 
 ## Updates
 
-This minimal add-on builds on the official `technitium/dns-server:latest` container image so the Technitium application and required .NET runtime stay aligned. To update Technitium, update/rebuild the add-on image through Home Assistant after a new add-on release is published.
+This minimal add-on builds on the official `technitium/dns-server:latest` container image so the Technitium application and required .NET runtime stay aligned. The image build verifies that the required .NET 10 runtime frameworks are present, and the start script checks them again before launching Technitium. To update Technitium, update/rebuild the add-on image through Home Assistant after a new add-on release is published.
 
 Before updating:
 
@@ -99,7 +107,7 @@ Before updating:
 ## Known limitations
 
 - This add-on uses `host_network: true` so DNS clients can reach port 53 directly on the Home Assistant host IP. If another service already uses port 53, the add-on will not start correctly.
-- The **Open Web UI** button uses Home Assistant Ingress on internal port 5380. If direct access to `http://HOME_ASSISTANT_IP:5380` fails, use the Ingress button first and then check the add-on logs.
+- The **Open Web UI** button uses Home Assistant Ingress on internal port 5380. If direct access to `http://HOME_ASSISTANT_IP:5380` fails, use the Ingress button first and then check the add-on logs with `log_level` set to `debug`.
 - Home Assistant OS becomes part of the DNS path. If Home Assistant OS is offline, clients that rely only on this DNS server may lose DNS resolution.
 - Only `amd64`, `aarch64`, and `armv7` are declared. The Docker base image and .NET runtime must be available for the target architecture during build.
 - DoH, DoT, DoQ, HTTPS for the web UI, DHCP service, and certificate automation are not configured by this add-on.
